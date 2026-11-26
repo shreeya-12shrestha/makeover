@@ -2,6 +2,39 @@ import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import './App.css'
 
+// Lips ka landmark numbers, outline ma kram milayera
+const LIPS_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
+const LIPS_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
+const LIP_COLOR = 'rgba(180, 30, 60, 0.6)'
+
+type Point = { x: number; y: number }
+
+function tracePolygon(
+  ctx: CanvasRenderingContext2D,
+  face: Point[],
+  indices: number[],
+  w: number,
+  h: number,
+) {
+  indices.forEach((idx, i) => {
+    const p = face[idx]
+    if (i === 0) ctx.moveTo(p.x * w, p.y * h)
+    else ctx.lineTo(p.x * w, p.y * h)
+  })
+  ctx.closePath()
+}
+
+function drawLips(ctx: CanvasRenderingContext2D, face: Point[], w: number, h: number) {
+  ctx.save()
+  ctx.beginPath()
+  tracePolygon(ctx, face, LIPS_OUTER, w, h)
+  tracePolygon(ctx, face, LIPS_INNER, w, h)
+  ctx.fillStyle = LIP_COLOR
+  ctx.filter = 'blur(2px)'
+  ctx.fill('evenodd')
+  ctx.restore()
+}
+
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
