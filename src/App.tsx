@@ -5,7 +5,15 @@ import './App.css'
 // Lips ka landmark numbers, outline ma kram milayera
 const LIPS_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
 const LIPS_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
-const LIP_COLOR = 'rgba(180, 30, 60, 0.6)'
+const SHADES = [
+  { name: 'None', color: '' },
+  { name: 'Nude', color: '#a8645a' },
+  { name: 'Pink', color: '#c2456e' },
+  { name: 'Coral', color: '#d9573f' },
+  { name: 'Red', color: '#b0102a' },
+  { name: 'Berry', color: '#7d1f45' },
+  { name: 'Maroon', color: '#5c0f1e' },
+]
 
 type Point = { x: number; y: number }
 
@@ -24,12 +32,20 @@ function tracePolygon(
   ctx.closePath()
 }
 
-function drawLips(ctx: CanvasRenderingContext2D, face: Point[], w: number, h: number) {
+function drawLips(
+  ctx: CanvasRenderingContext2D,
+  face: Point[],
+  w: number,
+  h: number,
+  color: string,
+  opacity: number,
+) {
   ctx.save()
   ctx.beginPath()
   tracePolygon(ctx, face, LIPS_OUTER, w, h)
   tracePolygon(ctx, face, LIPS_INNER, w, h)
-  ctx.fillStyle = LIP_COLOR
+  ctx.fillStyle = color
+  ctx.globalAlpha = opacity
   ctx.filter = 'blur(2px)'
   ctx.fill('evenodd')
   ctx.restore()
@@ -40,6 +56,13 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [status, setStatus] = useState('Model load hudai cha...')
   const [error, setError] = useState<string | null>(null)
+  const [shade, setShade] = useState(SHADES[4].color)
+  const [intensity, setIntensity] = useState(0.6)
+  const lipRef = useRef({ color: shade, intensity })
+
+  useEffect(() => {
+    lipRef.current = { color: shade, intensity }
+  }, [shade, intensity])
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -89,7 +112,6 @@ function App() {
         canvas.height = video.videoHeight
         const ctx = canvas.getContext('2d')
         if (!ctx) return
-        ctx.fillStyle = '#00e0a4'
         setStatus('')
 
         // 4. Har naya frame ma face detect garera dots draw garne
@@ -100,11 +122,10 @@ function App() {
             lastTime = video.currentTime
             const result = lm.detectForVideo(video, performance.now())
             ctx.clearRect(0, 0, canvas.width, canvas.height)
-            for (const face of result.faceLandmarks) {
-              for (const p of face) {
-                ctx.beginPath()
-                ctx.arc(p.x * canvas.width, p.y * canvas.height, 1.5, 0, Math.PI * 2)
-                ctx.fill()
+            const lip = lipRef.current
+            if (lip.color) {
+              for (const face of result.faceLandmarks) {
+                drawLips(ctx, face, canvas.width, canvas.height, lip.color, lip.intensity)
               }
             }
           }
@@ -129,10 +150,37 @@ function App() {
       <h1>Makeover</h1>
       {status && <p>{status}</p>}
       {error && <p className="error">Error: {error}</p>}
+
       <div className="stage">
         <video ref={videoRef} autoPlay playsInline muted className="camera" />
         <canvas ref={canvasRef} className="overlay" />
       </div>
+
+      <div className="shades">
+        {SHADES.map((s) => (
+          <button
+            key={s.name}
+            title={s.name}
+            className={`shade ${shade === s.color ? 'active' : ''}`}
+            style={{ background: s.color || 'transparent' }}
+            onClick={() => setShade(s.color)}
+          >
+            {s.color ? '' : 'None'}
+          </button>
+        ))}
+      </div>
+
+      <label className="intensity">
+        Intensity: {Math.round(intensity * 100)}%
+        <input
+          type="range"
+          min={0.1}
+          max={1}
+          step={0.05}
+          value={intensity}
+          onChange={(e) => setIntensity(Number(e.target.value))}
+        />
+      </label>
     </div>
   )
 }
