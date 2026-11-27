@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
+import { FaceLandmarker, FilesetResolver, ImageSegmenter } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
 import { ShadePicker } from './components/ShadePicker'
 import { EYESHADOW_SHADES, paintEyeshadowMask, applyEyeshadow } from './makeup/eyeshadow'
 import { createLayer } from './makeup/layer'
+import { HAIR_CATEGORY, HAIR_SHADES, paintHairMask, applyHairColor } from './makeup/hair'
 import './App.css'
 
 function App() {
@@ -18,9 +19,10 @@ function App() {
   const [blushIntensity, setBlushIntensity] = useState(0.4)
   const [eyeShade, setEyeShade] = useState(EYESHADOW_SHADES[1].color)
   const [eyeIntensity, setEyeIntensity] = useState(0.5)
+  const [hairShade, setHairShade] = useState(HAIR_SHADES[1].color)
+  const [hairIntensity, setHairIntensity] = useState(0.5)
 
-
-  // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
+    // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
   const lookRef = useRef({
     lipColor: shade,
     lipIntensity: intensity,
@@ -28,6 +30,8 @@ function App() {
     blushIntensity,
     eyeColor: eyeShade,
     eyeIntensity,
+    hairColor: hairShade,
+    hairIntensity,
   })
 
   useEffect(() => {
@@ -38,12 +42,14 @@ function App() {
       blushIntensity,
       eyeColor: eyeShade,
       eyeIntensity,
+      hairColor: hairShade,
+      hairIntensity,
     }
-  }, [shade, intensity, blushShade, blushIntensity, eyeShade, eyeIntensity])
-  // Camera + model + detection loop (page khulda ekchoti)
+  }, [shade, intensity, blushShade, blushIntensity, eyeShade, eyeIntensity, hairShade, hairIntensity])
   useEffect(() => {
     let stream: MediaStream | null = null
     let landmarker: FaceLandmarker | null = null
+    let segmenter: ImageSegmenter | null = null
     let rafId = 0
     let cancelled = false
 
@@ -53,6 +59,8 @@ function App() {
       stream = null
       landmarker?.close()
       landmarker = null
+      segmenter?.close()
+      segmenter = null
     }
 
     async function start() {
