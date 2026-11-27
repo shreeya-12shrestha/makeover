@@ -78,6 +78,18 @@ function App() {
         landmarker = lm
         if (cancelled) { stopAll(); return }
 
+        // 1b. Kapal chhuttaune model load garne
+        const seg = await ImageSegmenter.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: '/models/selfie_multiclass.tflite',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          outputCategoryMask: false,
+          outputConfidenceMasks: true,
+        })
+        segmenter = seg
+        if (cancelled) { stopAll(); return }
         // 2. Camera kholne
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user' },
@@ -102,7 +114,7 @@ function App() {
         const { canvas: lipLayer, ctx: lctx } = createLayer(canvas.width, canvas.height)
         const { canvas: blushLayer, ctx: bctx } = createLayer(canvas.width, canvas.height)
         const { canvas: eyeLayer, ctx: ectx } = createLayer(canvas.width, canvas.height)
-
+        const { canvas: hairLayer, ctx: hctx } = createLayer(canvas.width, canvas.height)
         setStatus('')
 
         // 4. Har naya frame: camera frame draw, ani makeup milaaune
@@ -116,6 +128,22 @@ function App() {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
             const look = lookRef.current
+            
+            // Kapal: hair colour chhaneko bela matra segmentation chalaune
+            if (look.hairColor) {
+              seg.segmentForVideo(video, performance.now(), (segResult) => {
+                const hairMask = segResult.confidenceMasks?.[HAIR_CATEGORY]
+                if (!hairMask) return
+                paintHairMask(
+                  hctx,
+                  hairMask.getAsFloat32Array(),
+                  hairMask.width,
+                  hairMask.height,
+                  look.hairColor,
+                )
+              })
+              applyHairColor(ctx, hairLayer, look.hairIntensity)
+            }
             // Blush pahile (chhala ma), lipstick pachi
             if (look.blushColor) {
               bctx.clearRect(0, 0, blushLayer.width, blushLayer.height)
@@ -192,6 +220,15 @@ function App() {
         onSelect={setBlushShade}
         intensity={blushIntensity}
         onIntensityChange={setBlushIntensity}
+      />
+      
+      <ShadePicker
+        title="Hair colour"
+        shades={HAIR_SHADES}
+        selected={hairShade}
+        onSelect={setHairShade}
+        intensity={hairIntensity}
+        onIntensityChange={setHairIntensity}
       />
     </div>
   )
