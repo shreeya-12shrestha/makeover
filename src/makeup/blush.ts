@@ -1,5 +1,5 @@
 import type { Point } from './geometry'
-
+import { hexToRgb } from './color'
 // Gaala (cheek) ko bichko area chhune landmarks: baya ra daya
 const LEFT_CHEEK = [50, 117, 123, 187, 205]
 const RIGHT_CHEEK = [280, 346, 352, 411, 425]
@@ -26,10 +26,6 @@ function averagePoint(face: Point[], indices: number[], w: number, h: number) {
   return { x: (x / indices.length) * w, y: (y / indices.length) * h }
 }
 
-function hexToRgb(hex: string) {
-  const n = parseInt(hex.slice(1), 16)
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
-}
 
 export function paintBlushMask(
   bctx: CanvasRenderingContext2D,
