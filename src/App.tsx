@@ -4,6 +4,7 @@ import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
 import { ShadePicker } from './components/ShadePicker'
 import { EYESHADOW_SHADES, paintEyeshadowMask, applyEyeshadow } from './makeup/eyeshadow'
+import { createLayer } from './makeup/layer'
 import './App.css'
 
 function App() {
@@ -89,12 +90,10 @@ function App() {
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
-        // Lipstick ko lagi lukeko chuttai canvas (screen ma dekhidaina)
-        const lipLayer = document.createElement('canvas')
-        lipLayer.width = canvas.width
-        lipLayer.height = canvas.height
-        const lctx = lipLayer.getContext('2d')
-        if (!lctx) return
+        // Har makeup ko lagi screen ma nadekhine chuttai layer
+        const { canvas: lipLayer, ctx: lctx } = createLayer(canvas.width, canvas.height)
+        const { canvas: blushLayer, ctx: bctx } = createLayer(canvas.width, canvas.height)
+        const { canvas: eyeLayer, ctx: ectx } = createLayer(canvas.width, canvas.height)
 
         
         // Blush ko lagi arko lukeko canvas
