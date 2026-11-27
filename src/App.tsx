@@ -95,21 +95,6 @@ function App() {
         const { canvas: blushLayer, ctx: bctx } = createLayer(canvas.width, canvas.height)
         const { canvas: eyeLayer, ctx: ectx } = createLayer(canvas.width, canvas.height)
 
-        
-        // Blush ko lagi arko lukeko canvas
-        const blushLayer = document.createElement('canvas')
-        blushLayer.width = canvas.width
-        blushLayer.height = canvas.height
-        const bctx = blushLayer.getContext('2d')
-        if (!bctx) return
-
-        // Eyeshadow ko lagi arko lukeko canvas
-        const eyeLayer = document.createElement('canvas')
-        eyeLayer.width = canvas.width
-        eyeLayer.height = canvas.height
-        const ectx = eyeLayer.getContext('2d')
-        if (!ectx) return
-
         setStatus('')
 
         // 4. Har naya frame: camera frame draw, ani makeup milaaune
