@@ -1,30 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
-import './App.css'
-
-import { useEffect, useRef, useState } from 'react'
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import './App.css'
-
-// ===== 3. Main component =====
-
-function App() {
-
-// ===== 3. Main component =====
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [status, setStatus] = useState('Model load hudai cha...')
   const [error, setError] = useState<string | null>(null)
-  const [shade, setShade] = useState(SHADES[4].color)
+  const [shade, setShade] = useState(LIP_SHADES[4].color)
   const [intensity, setIntensity] = useState(0.6)
-  const lipRef = useRef({ color: shade, intensity })
 
-  // Shade/intensity change huda loop le padhne box update garne
+  // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
+  const lookRef = useRef({ lipColor: shade, lipIntensity: intensity })
+
   useEffect(() => {
-    lipRef.current = { color: shade, intensity }
+    lookRef.current = { lipColor: shade, lipIntensity: intensity }
   }, [shade, intensity])
 
   // Camera + model + detection loop (page khulda ekchoti)
@@ -86,7 +77,7 @@ function App() {
 
         setStatus('')
 
-        // 4. Har naya frame: camera frame draw, ani lipstick milaaune
+        // 4. Har naya frame: camera frame draw, ani makeup milaaune
         let lastTime = -1
         const loop = () => {
           if (cancelled) return
@@ -96,13 +87,13 @@ function App() {
 
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-            const lip = lipRef.current
-            if (lip.color) {
+            const look = lookRef.current
+            if (look.lipColor) {
               lctx.clearRect(0, 0, lipLayer.width, lipLayer.height)
               for (const face of result.faceLandmarks) {
-                paintLipMask(lctx, face, lipLayer.width, lipLayer.height, lip.color)
+                paintLipMask(lctx, face, lipLayer.width, lipLayer.height, look.lipColor)
               }
-              applyLipstick(ctx, lipLayer, lip.intensity)
+              applyLipstick(ctx, lipLayer, look.lipIntensity)
             }
           }
           rafId = requestAnimationFrame(loop)
@@ -133,7 +124,7 @@ function App() {
       </div>
 
       <div className="shades">
-        {SHADES.map((s) => (
+        {LIP_SHADES.map((s) => (
           <button
             key={s.name}
             title={s.name}
