@@ -2,74 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import './App.css'
 
-// ===== 1. Constants =====
+import { useEffect, useRef, useState } from 'react'
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
+import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
+import './App.css'
 
-// Lips ka landmark numbers, outline ma kram milayera
-const LIPS_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
-const LIPS_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
+// ===== 3. Main component =====
 
-const SHADES = [
-  { name: 'None', color: '' },
-  { name: 'Nude', color: '#a8645a' },
-  { name: 'Pink', color: '#c2456e' },
-  { name: 'Coral', color: '#d9573f' },
-  { name: 'Red', color: '#b0102a' },
-  { name: 'Berry', color: '#7d1f45' },
-  { name: 'Maroon', color: '#5c0f1e' },
-]
-
-// ===== 2. Helper functions =====
-
-type Point = { x: number; y: number }
-
-function tracePolygon(
-  ctx: CanvasRenderingContext2D,
-  face: Point[],
-  indices: number[],
-  w: number,
-  h: number,
-) {
-  indices.forEach((idx, i) => {
-    const p = face[idx]
-    if (i === 0) ctx.moveTo(p.x * w, p.y * h)
-    else ctx.lineTo(p.x * w, p.y * h)
-  })
-  ctx.closePath()
-}
-
-function paintLipMask(
-  lctx: CanvasRenderingContext2D,
-  face: Point[],
-  w: number,
-  h: number,
-  color: string,
-) {
-  lctx.save()
-  lctx.beginPath()
-  tracePolygon(lctx, face, LIPS_OUTER, w, h)
-  tracePolygon(lctx, face, LIPS_INNER, w, h)
-  lctx.fillStyle = color
-  lctx.filter = 'blur(2px)'
-  lctx.fill('evenodd')
-  lctx.restore()
-}
-
-function applyLipstick(
-  ctx: CanvasRenderingContext2D,
-  lipLayer: HTMLCanvasElement,
-  intensity: number,
-) {
-  ctx.save()
-  // Pass 1: lips ko texture rakhera colour pherne
-  ctx.globalCompositeOperation = 'color'
-  ctx.globalAlpha = intensity
-  ctx.drawImage(lipLayer, 0, 0)
-  // Pass 2: halka multiply le depth thapne
-  ctx.globalCompositeOperation = 'multiply'
-  ctx.globalAlpha = intensity * 0.35
-  ctx.drawImage(lipLayer, 0, 0)
-  ctx.restore()
-}
+function App() {
 
 // ===== 3. Main component =====
 
