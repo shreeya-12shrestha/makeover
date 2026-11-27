@@ -49,13 +49,17 @@ export function applyHairColor(
   const w = ctx.canvas.width
   const h = ctx.canvas.height
   ctx.save()
-  // Pass 1: kapal ko texture rakhera colour pherne
-  ctx.globalCompositeOperation = 'color'
+  // Pass 1: kapal ko andhyaro-ujyalo jastai rakhera halka tint
+  ctx.globalCompositeOperation = 'soft-light'
   ctx.globalAlpha = intensity
   ctx.drawImage(hairLayer, 0, 0, w, h)
-  // Pass 2: kalo kapal ma colour dekhauna halka ujyalo thapne
+  // Pass 2: ujyalo pareko kapal (highlights) ma colour pherne
+  ctx.globalCompositeOperation = 'color'
+  ctx.globalAlpha = intensity * 0.4
+  ctx.drawImage(hairLayer, 0, 0, w, h)
+  // Pass 3: kalo kapal ma pani alikati colour dekhiyos bhanera, dherai halka
   ctx.globalCompositeOperation = 'screen'
-  ctx.globalAlpha = intensity * 0.35
+  ctx.globalAlpha = intensity * 0.1
   ctx.drawImage(hairLayer, 0, 0, w, h)
   ctx.restore()
 }
