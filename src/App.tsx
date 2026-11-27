@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
+import { ShadePicker } from './components/ShadePicker'
 import './App.css'
 
 function App() {
@@ -152,61 +153,23 @@ function App() {
         <canvas ref={canvasRef} className="overlay" />
       </div>
 
-      <section className="controls">
-        <h2>Lipstick</h2>
-        <div className="shades">
-          {LIP_SHADES.map((s) => (
-            <button
-              key={s.name}
-              title={s.name}
-              className={`shade ${shade === s.color ? 'active' : ''}`}
-              style={{ background: s.color || 'transparent' }}
-              onClick={() => setShade(s.color)}
-            >
-              {s.color ? '' : 'None'}
-            </button>
-          ))}
-        </div>
-        <label className="intensity">
-          Intensity: {Math.round(intensity * 100)}%
-          <input
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.05}
-            value={intensity}
-            onChange={(e) => setIntensity(Number(e.target.value))}
-          />
-        </label>
-      </section>
+      <ShadePicker
+        title="Lipstick"
+        shades={LIP_SHADES}
+        selected={shade}
+        onSelect={setShade}
+        intensity={intensity}
+        onIntensityChange={setIntensity}
+      />
 
-      <section className="controls">
-        <h2>Blush</h2>
-        <div className="shades">
-          {BLUSH_SHADES.map((s) => (
-            <button
-              key={s.name}
-              title={s.name}
-              className={`shade ${blushShade === s.color ? 'active' : ''}`}
-              style={{ background: s.color || 'transparent' }}
-              onClick={() => setBlushShade(s.color)}
-            >
-              {s.color ? '' : 'None'}
-            </button>
-          ))}
-        </div>
-        <label className="intensity">
-          Intensity: {Math.round(blushIntensity * 100)}%
-          <input
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.05}
-            value={blushIntensity}
-            onChange={(e) => setBlushIntensity(Number(e.target.value))}
-          />
-        </label>
-      </section>
+      <ShadePicker
+        title="Blush"
+        shades={BLUSH_SHADES}
+        selected={blushShade}
+        onSelect={setBlushShade}
+        intensity={blushIntensity}
+        onIntensityChange={setBlushIntensity}
+      />
     </div>
   )
 }
