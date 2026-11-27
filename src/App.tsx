@@ -3,6 +3,7 @@ import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
 import { ShadePicker } from './components/ShadePicker'
+import { EYESHADOW_SHADES, paintEyeshadowMask, applyEyeshadow } from './makeup/eyeshadow'
 import './App.css'
 
 function App() {
@@ -14,6 +15,8 @@ function App() {
   const [intensity, setIntensity] = useState(0.6)
   const [blushShade, setBlushShade] = useState(BLUSH_SHADES[2].color)
   const [blushIntensity, setBlushIntensity] = useState(0.4)
+  const [eyeShade, setEyeShade] = useState(EYESHADOW_SHADES[1].color)
+  const [eyeIntensity, setEyeIntensity] = useState(0.5)
 
 
   // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
@@ -22,6 +25,8 @@ function App() {
     lipIntensity: intensity,
     blushColor: blushShade,
     blushIntensity,
+    eyeColor: eyeShade,
+    eyeIntensity,
   })
 
   useEffect(() => {
@@ -30,8 +35,10 @@ function App() {
       lipIntensity: intensity,
       blushColor: blushShade,
       blushIntensity,
+      eyeColor: eyeShade,
+      eyeIntensity,
     }
-  }, [shade, intensity, blushShade, blushIntensity])
+  }, [shade, intensity, blushShade, blushIntensity, eyeShade, eyeIntensity])
   // Camera + model + detection loop (page khulda ekchoti)
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -97,6 +104,13 @@ function App() {
         const bctx = blushLayer.getContext('2d')
         if (!bctx) return
 
+        // Eyeshadow ko lagi arko lukeko canvas
+        const eyeLayer = document.createElement('canvas')
+        eyeLayer.width = canvas.width
+        eyeLayer.height = canvas.height
+        const ectx = eyeLayer.getContext('2d')
+        if (!ectx) return
+
         setStatus('')
 
         // 4. Har naya frame: camera frame draw, ani makeup milaaune
@@ -117,6 +131,13 @@ function App() {
                 paintBlushMask(bctx, face, blushLayer.width, blushLayer.height, look.blushColor)
               }
               applyBlush(ctx, blushLayer, look.blushIntensity)
+            }
+            if (look.eyeColor) {
+              ectx.clearRect(0, 0, eyeLayer.width, eyeLayer.height)
+              for (const face of result.faceLandmarks) {
+                paintEyeshadowMask(ectx, face, eyeLayer.width, eyeLayer.height, look.eyeColor)
+              }
+              applyEyeshadow(ctx, eyeLayer, look.eyeIntensity)
             }
             if (look.lipColor) {
               lctx.clearRect(0, 0, lipLayer.width, lipLayer.height)
@@ -160,6 +181,16 @@ function App() {
         onSelect={setShade}
         intensity={intensity}
         onIntensityChange={setIntensity}
+      />
+
+
+      <ShadePicker
+        title="Eyeshadow"
+        shades={EYESHADOW_SHADES}
+        selected={eyeShade}
+        onSelect={setEyeShade}
+        intensity={eyeIntensity}
+        onIntensityChange={setEyeIntensity}
       />
 
       <ShadePicker
