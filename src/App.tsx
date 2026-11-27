@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
+import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
 import './App.css'
 
 function App() {
@@ -10,14 +11,26 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [shade, setShade] = useState(LIP_SHADES[4].color)
   const [intensity, setIntensity] = useState(0.6)
+  const [blushShade, setBlushShade] = useState(BLUSH_SHADES[2].color)
+  const [blushIntensity, setBlushIntensity] = useState(0.4)
+
 
   // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
-  const lookRef = useRef({ lipColor: shade, lipIntensity: intensity })
+  const lookRef = useRef({
+    lipColor: shade,
+    lipIntensity: intensity,
+    blushColor: blushShade,
+    blushIntensity,
+  })
 
   useEffect(() => {
-    lookRef.current = { lipColor: shade, lipIntensity: intensity }
-  }, [shade, intensity])
-
+    lookRef.current = {
+      lipColor: shade,
+      lipIntensity: intensity,
+      blushColor: blushShade,
+      blushIntensity,
+    }
+  }, [shade, intensity, blushShade, blushIntensity])
   // Camera + model + detection loop (page khulda ekchoti)
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -75,6 +88,14 @@ function App() {
         const lctx = lipLayer.getContext('2d')
         if (!lctx) return
 
+        
+        // Blush ko lagi arko lukeko canvas
+        const blushLayer = document.createElement('canvas')
+        blushLayer.width = canvas.width
+        blushLayer.height = canvas.height
+        const bctx = blushLayer.getContext('2d')
+        if (!bctx) return
+
         setStatus('')
 
         // 4. Har naya frame: camera frame draw, ani makeup milaaune
@@ -88,6 +109,14 @@ function App() {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
             const look = lookRef.current
+            // Blush pahile (chhala ma), lipstick pachi
+            if (look.blushColor) {
+              bctx.clearRect(0, 0, blushLayer.width, blushLayer.height)
+              for (const face of result.faceLandmarks) {
+                paintBlushMask(bctx, face, blushLayer.width, blushLayer.height, look.blushColor)
+              }
+              applyBlush(ctx, blushLayer, look.blushIntensity)
+            }
             if (look.lipColor) {
               lctx.clearRect(0, 0, lipLayer.width, lipLayer.height)
               for (const face of result.faceLandmarks) {
@@ -123,31 +152,61 @@ function App() {
         <canvas ref={canvasRef} className="overlay" />
       </div>
 
-      <div className="shades">
-        {LIP_SHADES.map((s) => (
-          <button
-            key={s.name}
-            title={s.name}
-            className={`shade ${shade === s.color ? 'active' : ''}`}
-            style={{ background: s.color || 'transparent' }}
-            onClick={() => setShade(s.color)}
-          >
-            {s.color ? '' : 'None'}
-          </button>
-        ))}
-      </div>
+      <section className="controls">
+        <h2>Lipstick</h2>
+        <div className="shades">
+          {LIP_SHADES.map((s) => (
+            <button
+              key={s.name}
+              title={s.name}
+              className={`shade ${shade === s.color ? 'active' : ''}`}
+              style={{ background: s.color || 'transparent' }}
+              onClick={() => setShade(s.color)}
+            >
+              {s.color ? '' : 'None'}
+            </button>
+          ))}
+        </div>
+        <label className="intensity">
+          Intensity: {Math.round(intensity * 100)}%
+          <input
+            type="range"
+            min={0.1}
+            max={1}
+            step={0.05}
+            value={intensity}
+            onChange={(e) => setIntensity(Number(e.target.value))}
+          />
+        </label>
+      </section>
 
-      <label className="intensity">
-        Intensity: {Math.round(intensity * 100)}%
-        <input
-          type="range"
-          min={0.1}
-          max={1}
-          step={0.05}
-          value={intensity}
-          onChange={(e) => setIntensity(Number(e.target.value))}
-        />
-      </label>
+      <section className="controls">
+        <h2>Blush</h2>
+        <div className="shades">
+          {BLUSH_SHADES.map((s) => (
+            <button
+              key={s.name}
+              title={s.name}
+              className={`shade ${blushShade === s.color ? 'active' : ''}`}
+              style={{ background: s.color || 'transparent' }}
+              onClick={() => setBlushShade(s.color)}
+            >
+              {s.color ? '' : 'None'}
+            </button>
+          ))}
+        </div>
+        <label className="intensity">
+          Intensity: {Math.round(blushIntensity * 100)}%
+          <input
+            type="range"
+            min={0.1}
+            max={1}
+            step={0.05}
+            value={blushIntensity}
+            onChange={(e) => setBlushIntensity(Number(e.target.value))}
+          />
+        </label>
+      </section>
     </div>
   )
 }
