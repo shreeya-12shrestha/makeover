@@ -28,12 +28,12 @@
   top: 0;
   left: 0;
   height: 100%;
-  mix-blend-mode: multiply;
 }
 
 .error {
   color: #e5484d;
 }
+
 .shades {
   display: flex;
   flex-wrap: wrap;

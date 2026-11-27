@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import './App.css'
 
+// ===== 1. Constants =====
+
 // Lips ka landmark numbers, outline ma kram milayera
 const LIPS_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
 const LIPS_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
+
 const SHADES = [
   { name: 'None', color: '' },
   { name: 'Nude', color: '#a8645a' },
@@ -14,6 +17,8 @@ const SHADES = [
   { name: 'Berry', color: '#7d1f45' },
   { name: 'Maroon', color: '#5c0f1e' },
 ]
+
+// ===== 2. Helper functions =====
 
 type Point = { x: number; y: number }
 
@@ -32,24 +37,41 @@ function tracePolygon(
   ctx.closePath()
 }
 
-function drawLips(
-  ctx: CanvasRenderingContext2D,
+function paintLipMask(
+  lctx: CanvasRenderingContext2D,
   face: Point[],
   w: number,
   h: number,
   color: string,
-  opacity: number,
+) {
+  lctx.save()
+  lctx.beginPath()
+  tracePolygon(lctx, face, LIPS_OUTER, w, h)
+  tracePolygon(lctx, face, LIPS_INNER, w, h)
+  lctx.fillStyle = color
+  lctx.filter = 'blur(2px)'
+  lctx.fill('evenodd')
+  lctx.restore()
+}
+
+function applyLipstick(
+  ctx: CanvasRenderingContext2D,
+  lipLayer: HTMLCanvasElement,
+  intensity: number,
 ) {
   ctx.save()
-  ctx.beginPath()
-  tracePolygon(ctx, face, LIPS_OUTER, w, h)
-  tracePolygon(ctx, face, LIPS_INNER, w, h)
-  ctx.fillStyle = color
-  ctx.globalAlpha = opacity
-  ctx.filter = 'blur(2px)'
-  ctx.fill('evenodd')
+  // Pass 1: lips ko texture rakhera colour pherne
+  ctx.globalCompositeOperation = 'color'
+  ctx.globalAlpha = intensity
+  ctx.drawImage(lipLayer, 0, 0)
+  // Pass 2: halka multiply le depth thapne
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.globalAlpha = intensity * 0.35
+  ctx.drawImage(lipLayer, 0, 0)
   ctx.restore()
 }
+
+// ===== 3. Main component =====
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -60,10 +82,12 @@ function App() {
   const [intensity, setIntensity] = useState(0.6)
   const lipRef = useRef({ color: shade, intensity })
 
+  // Shade/intensity change huda loop le padhne box update garne
   useEffect(() => {
     lipRef.current = { color: shade, intensity }
   }, [shade, intensity])
 
+  // Camera + model + detection loop (page khulda ekchoti)
   useEffect(() => {
     let stream: MediaStream | null = null
     let landmarker: FaceLandmarker | null = null
@@ -112,21 +136,33 @@ function App() {
         canvas.height = video.videoHeight
         const ctx = canvas.getContext('2d')
         if (!ctx) return
+
+        // Lipstick ko lagi lukeko chuttai canvas (screen ma dekhidaina)
+        const lipLayer = document.createElement('canvas')
+        lipLayer.width = canvas.width
+        lipLayer.height = canvas.height
+        const lctx = lipLayer.getContext('2d')
+        if (!lctx) return
+
         setStatus('')
 
-        // 4. Har naya frame ma face detect garera dots draw garne
+        // 4. Har naya frame: camera frame draw, ani lipstick milaaune
         let lastTime = -1
         const loop = () => {
           if (cancelled) return
           if (video.currentTime !== lastTime) {
             lastTime = video.currentTime
             const result = lm.detectForVideo(video, performance.now())
-            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
             const lip = lipRef.current
             if (lip.color) {
+              lctx.clearRect(0, 0, lipLayer.width, lipLayer.height)
               for (const face of result.faceLandmarks) {
-                drawLips(ctx, face, canvas.width, canvas.height, lip.color, lip.intensity)
+                paintLipMask(lctx, face, lipLayer.width, lipLayer.height, lip.color)
               }
+              applyLipstick(ctx, lipLayer, lip.intensity)
             }
           }
           rafId = requestAnimationFrame(loop)
