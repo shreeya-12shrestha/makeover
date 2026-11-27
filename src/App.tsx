@@ -2,27 +2,36 @@ import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver, ImageSegmenter } from '@mediapipe/tasks-vision'
 import { LIP_SHADES, paintLipMask, applyLipstick } from './makeup/lips'
 import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
-import { ShadePicker } from './components/ShadePicker'
 import { EYESHADOW_SHADES, paintEyeshadowMask, applyEyeshadow } from './makeup/eyeshadow'
-import { createLayer } from './makeup/layer'
 import { HAIR_CATEGORY, HAIR_SHADES, paintHairMask, applyHairColor } from './makeup/hair'
+import { createLayer } from './makeup/layer'
+import { sampleSkinColor } from './analysis/skin'
+import { ShadePicker } from './components/ShadePicker'
 import './App.css'
+
+type RGB = { r: number; g: number; b: number }
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [status, setStatus] = useState('Model load hudai cha...')
   const [error, setError] = useState<string | null>(null)
+
+  // ===== Makeup settings =====
   const [shade, setShade] = useState(LIP_SHADES[4].color)
   const [intensity, setIntensity] = useState(0.6)
   const [blushShade, setBlushShade] = useState(BLUSH_SHADES[2].color)
   const [blushIntensity, setBlushIntensity] = useState(0.4)
   const [eyeShade, setEyeShade] = useState(EYESHADOW_SHADES[1].color)
   const [eyeIntensity, setEyeIntensity] = useState(0.5)
-  const [hairShade, setHairShade] = useState(HAIR_SHADES[1].color)
+  const [hairShade, setHairShade] = useState(HAIR_SHADES[0].color) // Hair aile park: default None
   const [hairIntensity, setHairIntensity] = useState(0.5)
 
-    // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
+  // ===== AI analysis =====
+  const [skin, setSkin] = useState<RGB | null>(null)
+  const analyzeRef = useRef(false)
+
+  // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
   const lookRef = useRef({
     lipColor: shade,
     lipIntensity: intensity,
@@ -46,6 +55,8 @@ function App() {
       hairIntensity,
     }
   }, [shade, intensity, blushShade, blushIntensity, eyeShade, eyeIntensity, hairShade, hairIntensity])
+
+  // ===== Camera + models + detection loop (page khulda ekchoti) =====
   useEffect(() => {
     let stream: MediaStream | null = null
     let landmarker: FaceLandmarker | null = null
@@ -90,6 +101,7 @@ function App() {
         })
         segmenter = seg
         if (cancelled) { stopAll(); return }
+
         // 2. Camera kholne
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user' },
@@ -115,9 +127,10 @@ function App() {
         const { canvas: blushLayer, ctx: bctx } = createLayer(canvas.width, canvas.height)
         const { canvas: eyeLayer, ctx: ectx } = createLayer(canvas.width, canvas.height)
         const { canvas: hairLayer, ctx: hctx } = createLayer(canvas.width, canvas.height)
+
         setStatus('')
 
-        // 4. Har naya frame: camera frame draw, ani makeup milaaune
+        // 4. Har naya frame: camera frame, analysis, ani makeup
         let lastTime = -1
         const loop = () => {
           if (cancelled) return
@@ -125,10 +138,18 @@ function App() {
             lastTime = video.currentTime
             const result = lm.detectForVideo(video, performance.now())
 
+            // Camera ko frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
+            // Analyze button thichiyo bhane: makeup lagaunu aghi nai chhala napne
+            const firstFace = result.faceLandmarks[0]
+            if (analyzeRef.current && firstFace) {
+              setSkin(sampleSkinColor(ctx, firstFace, canvas.width, canvas.height))
+              analyzeRef.current = false
+            }
+
             const look = lookRef.current
-            
+
             // Kapal: hair colour chhaneko bela matra segmentation chalaune
             if (look.hairColor) {
               seg.segmentForVideo(video, performance.now(), (segResult) => {
@@ -144,7 +165,8 @@ function App() {
               })
               applyHairColor(ctx, hairLayer, look.hairIntensity)
             }
-            // Blush pahile (chhala ma), lipstick pachi
+
+            // Blush
             if (look.blushColor) {
               bctx.clearRect(0, 0, blushLayer.width, blushLayer.height)
               for (const face of result.faceLandmarks) {
@@ -152,6 +174,8 @@ function App() {
               }
               applyBlush(ctx, blushLayer, look.blushIntensity)
             }
+
+            // Eyeshadow
             if (look.eyeColor) {
               ectx.clearRect(0, 0, eyeLayer.width, eyeLayer.height)
               for (const face of result.faceLandmarks) {
@@ -159,6 +183,8 @@ function App() {
               }
               applyEyeshadow(ctx, eyeLayer, look.eyeIntensity)
             }
+
+            // Lipstick
             if (look.lipColor) {
               lctx.clearRect(0, 0, lipLayer.width, lipLayer.height)
               for (const face of result.faceLandmarks) {
@@ -183,6 +209,7 @@ function App() {
     }
   }, [])
 
+  // ===== UI =====
   return (
     <div className="app">
       <h1>Makeover</h1>
@@ -194,6 +221,22 @@ function App() {
         <canvas ref={canvasRef} className="overlay" />
       </div>
 
+      <section className="controls">
+        <h2>AI Analysis</h2>
+        <button className="analyze-btn" onClick={() => { analyzeRef.current = true }}>
+          Analyze my face
+        </button>
+        {skin && (
+          <div className="skin-result">
+            <span
+              className="skin-swatch"
+              style={{ background: `rgb(${skin.r}, ${skin.g}, ${skin.b})` }}
+            />
+            <span>Skin: rgb({skin.r}, {skin.g}, {skin.b})</span>
+          </div>
+        )}
+      </section>
+
       <ShadePicker
         title="Lipstick"
         shades={LIP_SHADES}
@@ -201,16 +244,6 @@ function App() {
         onSelect={setShade}
         intensity={intensity}
         onIntensityChange={setIntensity}
-      />
-
-
-      <ShadePicker
-        title="Eyeshadow"
-        shades={EYESHADOW_SHADES}
-        selected={eyeShade}
-        onSelect={setEyeShade}
-        intensity={eyeIntensity}
-        onIntensityChange={setEyeIntensity}
       />
 
       <ShadePicker
@@ -221,7 +254,16 @@ function App() {
         intensity={blushIntensity}
         onIntensityChange={setBlushIntensity}
       />
-      
+
+      <ShadePicker
+        title="Eyeshadow"
+        shades={EYESHADOW_SHADES}
+        selected={eyeShade}
+        onSelect={setEyeShade}
+        intensity={eyeIntensity}
+        onIntensityChange={setEyeIntensity}
+      />
+
       <ShadePicker
         title="Hair colour"
         shades={HAIR_SHADES}
