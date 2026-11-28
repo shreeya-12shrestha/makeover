@@ -5,8 +5,7 @@ type DepthGroup = 'fair' | 'medium' | 'deep'
 type Palette = { lips: Shade[]; blush: Shade[]; eyeshadow: Shade[] }
 
 export type Recommendation = Palette & { reason: string }
-export type Recommendation = Palette & { reason: string }
-// Undertone + depth anusar shades ko table
+export type Recommendation = Palette & { eyeliner: Shade[]; reason: string }// Undertone + depth anusar shades ko table
 const PALETTES: Record<Undertone, Record<DepthGroup, Palette>> = {
   warm: {
     fair: {
