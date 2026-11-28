@@ -8,10 +8,20 @@ import { createLayer } from './makeup/layer'
 import { sampleSkinColor } from './analysis/skin'
 import { classifySkin } from './analysis/tone'
 import { recommendLook } from './analysis/recommend'
+import { measureRoomLight } from './analysis/light'
 import { ShadePicker } from './components/ShadePicker'
 import './App.css'
 
 type RGB = { r: number; g: number; b: number }
+
+// ===== Analysis settings (tune garna yaha matra pherne) =====
+const SCAN_FRAMES = 30 // kati frames ko average line (~1 second)
+const MIN_FACE_FRAMES = 10 // yati frames ma pani face bhetiyena bhane result nadine
+const MIN_ROOM_LIGHT = 60 // room ko ujyalo (0-255) yo bhanda kam: andhyaro
+const MAX_ROOM_LIGHT = 210 // yo bhanda badi: dherai chamkilo
+
+type Scan = { framesLeft: number; r: number; g: number; b: number; count: number }
+const newScan = (frames = 0): Scan => ({ framesLeft: frames, r: 0, g: 0, b: 0, count: 0 })
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -32,8 +42,9 @@ function App() {
   // ===== AI analysis =====
   const [skin, setSkin] = useState<RGB | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
-  // Scan: kati frames baki cha, ani ahile samma ko colour ko jod
-  const analyzeRef = useRef({ framesLeft: 0, r: 0, g: 0, b: 0, count: 0 })
+  const [notice, setNotice] = useState('')
+  const analyzeRef = useRef<Scan>(newScan())
+
   // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
   const lookRef = useRef({
     lipColor: shade,
@@ -130,6 +141,41 @@ function App() {
         const { canvas: blushLayer, ctx: bctx } = createLayer(canvas.width, canvas.height)
         const { canvas: eyeLayer, ctx: ectx } = createLayer(canvas.width, canvas.height)
         const { canvas: hairLayer, ctx: hctx } = createLayer(canvas.width, canvas.height)
+        // Room ko light napne sano layer (sano bhaye pugcha, chito huncha)
+        const { ctx: tctx } = createLayer(32, 24)
+
+        // Scan sakiyepachi: check garne, ani thik bhaye AI le look choose garne
+        const finishScan = (scan: Scan) => {
+          setAnalyzing(false)
+
+          if (scan.count < MIN_FACE_FRAMES) {
+            setNotice('Face ramrari dekhiyena. Camera tira seedha herera feri try gara.')
+            return
+          }
+
+          const roomLight = measureRoomLight(tctx, video)
+          if (roomLight < MIN_ROOM_LIGHT) {
+            setNotice('Room andhyaro cha. Jhyal ya ujyalo tira pharkera feri Analyze gara.')
+            return
+          }
+          if (roomLight > MAX_ROOM_LIGHT) {
+            setNotice('Light dherai chamkilo cha. Ali chhaya tira gayera feri Analyze gara.')
+            return
+          }
+
+          const measured = {
+            r: Math.round(scan.r / scan.count),
+            g: Math.round(scan.g / scan.count),
+            b: Math.round(scan.b / scan.count),
+          }
+          const info = classifySkin(measured)
+          const rec = recommendLook(info.depth, info.undertone)
+          setNotice('')
+          setSkin(measured)
+          setShade(rec.lips[0].color)
+          setBlushShade(rec.blush[0].color)
+          setEyeShade(rec.eyeshadow[0].color)
+        }
 
         setStatus('')
 
@@ -144,17 +190,19 @@ function App() {
             // Camera ko frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-            // Analyze: makeup lagaunu aghi chhala napne, ani AI le look choose garne
+            // Analyze: makeup lagaunu aghi, 30 frames samma chhala napne
             const firstFace = result.faceLandmarks[0]
-            if (analyzeRef.current && firstFace) {
-              const measured = sampleSkinColor(ctx, firstFace, canvas.width, canvas.height)
-              const info = classifySkin(measured)
-              const rec = recommendLook(info.depth, info.undertone)
-              setSkin(measured)
-              setShade(rec.lips[0].color)
-              setBlushShade(rec.blush[0].color)
-              setEyeShade(rec.eyeshadow[0].color)
-              analyzeRef.current = false
+            const scan = analyzeRef.current
+            if (scan.framesLeft > 0) {
+              if (firstFace) {
+                const m = sampleSkinColor(ctx, firstFace, canvas.width, canvas.height)
+                scan.r += m.r
+                scan.g += m.g
+                scan.b += m.b
+                scan.count++
+              }
+              scan.framesLeft--
+              if (scan.framesLeft === 0) finishScan(scan)
             }
 
             const look = lookRef.current
@@ -235,9 +283,20 @@ function App() {
 
       <section className="controls">
         <h2>AI Analysis</h2>
-        <button className="analyze-btn" onClick={() => { analyzeRef.current = true }}>
-          {skin ? 'Analyze again' : 'Analyze my face'}
+        <button
+          className="analyze-btn"
+          disabled={analyzing}
+          onClick={() => {
+            analyzeRef.current = newScan(SCAN_FRAMES)
+            setAnalyzing(true)
+            setNotice('')
+          }}
+        >
+          {analyzing ? 'Analyzing... sthir basa' : skin ? 'Analyze again' : 'Analyze my face'}
         </button>
+
+        {notice && <p className="notice">{notice}</p>}
+
         {skin && skinInfo && rec && (
           <>
             <div className="skin-result">
