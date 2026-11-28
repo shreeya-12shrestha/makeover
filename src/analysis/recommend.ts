@@ -5,7 +5,7 @@ type DepthGroup = 'fair' | 'medium' | 'deep'
 type Palette = { lips: Shade[]; blush: Shade[]; eyeshadow: Shade[] }
 
 export type Recommendation = Palette & { reason: string }
-
+export type Recommendation = Palette & { reason: string }
 // Undertone + depth anusar shades ko table
 const PALETTES: Record<Undertone, Record<DepthGroup, Palette>> = {
   warm: {
@@ -158,7 +158,24 @@ const PALETTES: Record<Undertone, Record<DepthGroup, Palette>> = {
     },
   },
 }
-
+// Eyeliner: depth anusar (ujyalo chhala ma brown narm, gadha ma black ramro khulchha)
+const EYELINERS: Record<DepthGroup, Shade[]> = {
+  fair: [
+    { name: 'Brown', color: '#3b2418' },
+    { name: 'Black', color: '#111111' },
+    { name: 'Plum', color: '#3a1830' },
+  ],
+  medium: [
+    { name: 'Black', color: '#111111' },
+    { name: 'Brown', color: '#3b2418' },
+    { name: 'Navy', color: '#1b2440' },
+  ],
+  deep: [
+    { name: 'Black', color: '#111111' },
+    { name: 'Plum', color: '#3a1830' },
+    { name: 'Navy', color: '#1b2440' },
+  ],
+}
 const REASONS: Record<Undertone, string> = {
   warm: 'Chhala ma sunaulo/pahelo tone cha. Coral, peach ra bronze jasta warm colours le natural glow dinchhan.',
   cool: 'Chhala ma gulaabi/raato tone cha. Berry, rose ra plum jasta cool colours le chhala lai fresh dekhaunchhan.',
@@ -172,5 +189,10 @@ function depthGroup(depth: Depth): DepthGroup {
 }
 
 export function recommendLook(depth: Depth, undertone: Undertone): Recommendation {
-  return { ...PALETTES[undertone][depthGroup(depth)], reason: REASONS[undertone] }
+  const group = depthGroup(depth)
+  return {
+    ...PALETTES[undertone][group],
+    eyeliner: EYELINERS[group],
+    reason: REASONS[undertone],
+  }
 }
