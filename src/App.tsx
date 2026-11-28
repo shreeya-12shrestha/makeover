@@ -5,7 +5,9 @@ import { BLUSH_SHADES, paintBlushMask, applyBlush } from './makeup/blush'
 import { EYESHADOW_SHADES, paintEyeshadowMask, applyEyeshadow } from './makeup/eyeshadow'
 import { HAIR_CATEGORY, HAIR_SHADES, paintHairMask, applyHairColor } from './makeup/hair'
 import { createLayer } from './makeup/layer'
+
 import { sampleSkinColor } from './analysis/skin'
+import { classifySkin } from './analysis/tone'
 import { ShadePicker } from './components/ShadePicker'
 import './App.css'
 
@@ -210,6 +212,7 @@ function App() {
   }, [])
 
   // ===== UI =====
+    const skinInfo = skin ? classifySkin(skin) : null
   return (
     <div className="app">
       <h1>Makeover</h1>
@@ -226,13 +229,19 @@ function App() {
         <button className="analyze-btn" onClick={() => { analyzeRef.current = true }}>
           Analyze my face
         </button>
-        {skin && (
+                {skin && skinInfo && (
           <div className="skin-result">
             <span
               className="skin-swatch"
               style={{ background: `rgb(${skin.r}, ${skin.g}, ${skin.b})` }}
             />
-            <span>Skin: rgb({skin.r}, {skin.g}, {skin.b})</span>
+            <div>
+              <div>Depth: <b>{skinInfo.depth}</b></div>
+              <div>Undertone: <b>{skinInfo.undertone}</b></div>
+              <div className="skin-numbers">
+                ITA {skinInfo.ita.toFixed(1)}° · Hue {skinInfo.hue.toFixed(1)}°
+              </div>
+            </div>
           </div>
         )}
       </section>
