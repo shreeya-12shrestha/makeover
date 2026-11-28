@@ -68,3 +68,22 @@
     font-size: 12px;
     color: #999;
 }
+
+.analyze-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 999px;
+    background: #e0607e;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.skin-reason {
+    max-width: 360px;
+    margin: 0;
+    font-size: 14px;
+    text-align: center;
+    color: #ccc;
+}
