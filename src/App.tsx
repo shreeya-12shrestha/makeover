@@ -31,8 +31,9 @@ function App() {
 
   // ===== AI analysis =====
   const [skin, setSkin] = useState<RGB | null>(null)
-  const analyzeRef = useRef(false)
-
+  const [analyzing, setAnalyzing] = useState(false)
+  // Scan: kati frames baki cha, ani ahile samma ko colour ko jod
+  const analyzeRef = useRef({ framesLeft: 0, r: 0, g: 0, b: 0, count: 0 })
   // Look = ahile lagayeko sabai makeup ko settings, eutai box ma
   const lookRef = useRef({
     lipColor: shade,
